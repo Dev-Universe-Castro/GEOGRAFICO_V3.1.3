@@ -1,0 +1,2855 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FertiCore - Sistema de Visualização Agrícola</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <!-- Custom CSS -->
+    <style>
+        :root {
+            --primary-green: #7CB342;
+            --secondary-green: #8BC34A;
+            --dark-green: #689F38;
+            --light-green: #DCEDC8;
+            --accent-brown: #8D6E63;
+            --white: #FFFFFF;
+            --light-gray: #F5F5F5;
+            --medium-gray: #E0E0E0;
+            --dark-gray: #424242;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--light-gray);
+            color: var(--dark-gray);
+        }
+
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 280px;
+            height: 100vh;
+            background: var(--white);
+            color: var(--dark-gray);
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 2px 0 15px rgba(0,0,0,0.1);
+            border-right: 1px solid var(--medium-gray);
+        }
+
+        .sidebar-header {
+            padding: 25px 20px;
+            background: var(--white);
+            border-bottom: 2px solid var(--light-green);
+            text-align: center;
+        }
+
+        .logo-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo-image {
+            width: 140px;
+            height: auto;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+        }
+
+        .logo-text {
+            font-size: 24px;
+            font-weight: 700;
+            margin: 0;
+            color: var(--white);
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .logo-subtitle {
+            font-size: 12px;
+            opacity: 0.9;
+            margin-top: 5px;
+            color: var(--black);
+        }
+
+        .sidebar-menu {
+            padding: 0;
+            list-style: none;
+            margin-top: 20px;
+        }
+
+        .sidebar-menu li {
+            border-bottom: 1px solid var(--medium-gray);
+        }
+
+        .sidebar-menu a {
+            display: block;
+            padding: 18px 25px;
+            color: var(--dark-gray);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+        }
+
+        .sidebar-menu a:hover,
+        .sidebar-menu a.active {
+            background: var(--light-green);
+            color: var(--dark-green);
+            border-left-color: var(--primary-green);
+            padding-left: 30px;
+        }
+
+        .sidebar-menu i {
+            width: 20px;
+            margin-right: 12px;
+            text-align: center;
+        }
+
+        .layers-section {
+            padding: 25px 20px;
+            border-top: 2px solid var(--light-green);
+            background: var(--white);
+        }
+
+        .layers-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: var(--dark-green);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-label {
+            font-size: 13px;
+            color: var(--dark-gray);
+            margin-bottom: 8px;
+            display: block;
+            font-weight: 500;
+        }
+
+        .form-select {
+            background: var(--white);
+            border: 2px solid var(--light-green);
+            color: var(--dark-gray);
+            font-size: 14px;
+            padding: 10px 15px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .form-select:focus {
+            background: var(--white);
+            border-color: var(--secondary-green);
+            box-shadow: 0 0 0 0.2rem rgba(124, 179, 66, 0.25);
+            outline: none;
+        }
+
+        .form-select option {
+            background: var(--white);
+            color: var(--dark-gray);
+        }
+
+        .main-content {
+            margin-left: 280px;
+            margin-right: 0px;
+            height: 100vh;
+            position: relative;
+            transition: margin-left 0.3s ease, margin-right 0.3s ease;
+        }
+
+        .main-content.sidebar-hidden {
+            margin-left: 0;
+        }
+
+        .main-content.analytics-visible {
+            margin-right: 350px;
+        }
+
+        .sidebar.hidden {
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+        }
+
+        .toggle-sidebar {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 2000;
+            background: var(--white);
+            border: 2px solid var(--primary-green);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        @media (max-width: 768px) {
+            .toggle-sidebar {
+                display: none; /* Hide on mobile, use mobile header button instead */
+            }
+        }
+
+        .toggle-sidebar:hover {
+            background: var(--primary-green);
+            color: var(--white);
+            transform: scale(1.1);
+        }
+
+        .toggle-sidebar.sidebar-hidden {
+            left: 20px;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            border-radius: 0;
+        }
+
+        .map-legend {
+            background: var(--white);
+            border-radius: 10px;
+            padding: 18px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            max-width: 280px;
+            font-size: 13px;
+            border: 2px solid var(--primary-green);
+        }
+
+        .map-legend h6 {
+            margin-bottom: 12px;
+            color: var(--dark-green);
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            border: 1px solid var(--medium-gray);
+            border-radius: 4px;
+        }
+
+        .stats-section {
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 2px solid var(--light-green);
+        }
+
+        .stat-card {
+            background: var(--light-green);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border-left: 4px solid var(--primary-green);
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            background: var(--secondary-green);
+            transform: translateY(-2px);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--dark-green);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
+            font-size: 22px;
+            font-weight: bold;
+            color: var(--dark-green);
+            margin-top: 5px;
+        }
+
+        /* Grayscale map tiles */
+        .grayscale-tiles {
+            filter: grayscale(100%) contrast(1.1) brightness(1.0) sepia(0.1);
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 280px;
+                height: 100vh;
+                position: fixed;
+                z-index: 2000;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+                height: 100vh;
+            }
+
+            .toggle-sidebar {
+                top: 15px;
+                right: 15px;
+                left: auto;
+                width: 48px;
+                height: 48px;
+                z-index: 2100;
+            }
+
+            .layers-section {
+                padding: 15px;
+            }
+
+            .form-group {
+                margin-bottom: 15px;
+            }
+
+            .layer-item {
+                padding: 10px;
+                margin-bottom: 8px;
+            }
+
+            .layer-controls {
+                flex-wrap: wrap;
+                gap: 5px;
+            }
+
+            .layer-controls .btn {
+                padding: 4px 8px;
+                font-size: 11px;
+            }
+
+            .analytics-card {
+                position: relative !important;
+                width: calc(100vw - 20px) !important;
+                top: auto !important;
+                left: auto !important;
+                margin: 10px auto;
+                max-height: 50vh;
+                overflow-y: auto;
+            }
+
+            .analytics-content {
+                font-size: 13px;
+            }
+
+            .analytics-section {
+                margin-bottom: 12px;
+                padding-bottom: 8px;
+            }
+
+            .analytics-value {
+                font-size: 24px;
+            }
+
+            #map {
+                height: calc(100vh - 60px) !important;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .toggle-sidebar {
+                width: 44px;
+                height: 44px;
+                font-size: 18px;
+            }
+
+            .sidebar-header {
+                padding: 15px;
+            }
+
+            .logo-image {
+                width: 120px;
+            }
+
+            .layers-section {
+                padding: 10px;
+            }
+
+            .layer-item-name {
+                font-size: 12px;
+            }
+
+            .layer-item-type {
+                font-size: 10px;
+            }
+
+            .form-select, .form-control {
+                font-size: 14px;
+                padding: 8px 12px;
+            }
+
+            .modal-dialog {
+                margin: 10px;
+                max-width: calc(100vw - 20px);
+            }
+
+            .modal-body .row .col-md-6 {
+                margin-bottom: 15px;
+            }
+        }
+
+        /* Melhorias gerais de UX */
+        .btn:focus,
+        .form-control:focus,
+        .form-select:focus {
+            outline: none;
+            box-shadow: 0 0 0 0.2rem rgba(124, 179, 66, 0.25);
+        }
+
+        .layer-item:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .widget-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .form-control, .form-select {
+            border-radius: 8px;
+        }
+
+        .btn {
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .modal-content {
+            border-radius: 15px;
+            border: none;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+        }
+
+        .sidebar {
+            backdrop-filter: blur(10px);
+        }
+
+        /* Overlay para mobile quando sidebar está aberta */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0,0,0,0.5);
+            z-index: 1999;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar-overlay.active {
+                display: block;
+            }
+        }
+
+        /* Custom Scrollbar */
+        .sidebar::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.3);
+            border-radius: 4px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: rgba(255,255,255,0.5);
+        }
+
+        /* Map Controls Styles */
+        .leaflet-control-custom {
+            background: white;
+            border: 2px solid rgba(0,0,0,0.2);
+            border-radius: 4px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+        }
+
+        .leaflet-control-custom:hover {
+            background: #f4f4f4;
+        }
+
+        .map-layer-control,
+        .map-tools-control {
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            border: 1px solid var(--medium-gray);
+            font-size: 13px;
+        }
+
+        .map-layer-control label:hover,
+        .map-tools-control label:hover {
+            background: var(--light-green);
+            border-radius: 3px;
+            padding: 2px;
+        }
+
+        .map-tools-control .btn {
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .map-tools-control input[type="range"] {
+            accent-color: var(--primary-green);
+        }
+
+        /* Coordinates display */
+        #coordinates-display {
+            transition: background-color 0.3s ease;
+        }
+
+        #coordinates-display:hover {
+            background: var(--light-green) !important;
+        }
+
+        /* Fullscreen styles */
+        #map:-webkit-full-screen {
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #map:-moz-full-screen {
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #map:fullscreen {
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* Map measurement styles */
+        .leaflet-popup-content {
+            font-size: 13px;
+        }
+
+        /* Mobile Header */
+        .mobile-header {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: var(--white);
+            color: var(--dark-gray);
+            z-index: 2500;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            border-bottom: 1px solid var(--medium-gray);
+        }
+
+        .mobile-header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 15px;
+            height: 100%;
+        }
+
+        .mobile-logo {
+            height: 35px;
+            width: auto;
+        }
+
+        .mobile-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0;
+            flex: 1;
+            text-align: center;
+        }
+
+        .mobile-menu-btn {
+            background: var(--white);
+            border: 2px solid var(--primary-green);
+            color: var(--primary-green);
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .mobile-menu-btn:hover {
+            background: var(--primary-green);
+            color: var(--white);
+        }
+
+        /* Mobile Footer */
+        .mobile-footer {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: white;
+            border-top: 1px solid var(--medium-gray);
+            z-index: 2500;
+            box-shadow: 0 -2px 15px rgba(0,0,0,0.15);
+        }
+
+        .mobile-footer-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            height: 100%;
+            max-width: 100%;
+        }
+
+        .footer-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            flex: 1;
+        }
+
+        .footer-section.footer-center {
+            flex: 1.2;
+        }
+
+        .footer-btn {
+            border: none;
+            border-radius: 12px;
+            padding: 8px 6px;
+            font-size: 11px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 50px;
+            width: 100%;
+            max-width: 65px;
+        }
+
+        .footer-btn.primary {
+            background: var(--primary-green);
+            color: white;
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(124, 179, 66, 0.3);
+        }
+
+        .footer-btn.primary:hover {
+            background: var(--dark-green);
+            transform: scale(1.15);
+        }
+
+        .footer-btn.secondary {
+            background: var(--light-gray);
+            color: var(--dark-gray);
+            border: 1px solid var(--medium-gray);
+        }
+
+        .footer-btn.secondary:hover {
+            background: var(--primary-green);
+            color: white;
+            border-color: var(--primary-green);
+        }
+
+        .footer-btn i {
+            font-size: 16px;
+            margin-bottom: 2px;
+        }
+
+        .footer-btn.primary i {
+            font-size: 18px;
+        }
+
+        .footer-btn span {
+            font-size: 9px;
+            line-height: 1.1;
+            font-weight: 500;
+        }
+
+        /* Responsive adjustments for map controls */
+        @media (max-width: 768px) {
+            .mobile-header,
+            .mobile-footer {
+                display: block;
+            }
+
+            .main-content {
+                margin-top: 60px;
+                margin-bottom: 80px;
+                height: calc(100vh - 140px);
+                margin-right: 0 !important;
+            }
+
+            #map {
+                height: 100% !important;
+            }
+
+            .sidebar {
+                top: 60px;
+                height: calc(100vh - 60px);
+            }
+
+            .toggle-sidebar {
+                top: 70px;
+            }
+
+            .map-layer-control,
+            .map-tools-control {
+                right: 10px !important;
+                top: 70px !important;
+                min-width: 180px;
+                font-size: 12px;
+            }
+
+            .leaflet-control-custom {
+                width: 35px;
+                height: 35px;
+            }
+
+            .leaflet-control-custom i {
+                line-height: 35px !important;
+                font-size: 14px;
+            }
+
+            .analytics-sidebar {
+                top: 60px;
+                height: calc(100vh - 60px);
+                width: 100vw;
+                right: -100vw;
+            }
+
+            .analytics-sidebar.visible {
+                right: 0;
+            }
+
+            .analytics-stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Camadas */
+        .layers-subtitle {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--dark-green);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .layer-item {
+            background: var(--light-green);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-left: 4px solid var(--primary-green);
+            transition: all 0.3s ease;
+        }
+
+        .layer-item:hover {
+            background: var(--secondary-green);
+            transform: translateY(-1px);
+        }
+
+        .layer-item-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .layer-item-name {
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--dark-green);
+        }
+
+        .layer-item-type {
+            font-size: 11px;
+            color: var(--dark-gray);
+            opacity: 0.8;
+        }
+
+        .layer-controls {
+            display: flex;
+            gap: 5px;
+        }
+
+        .layer-controls .btn {
+            padding: 2px 6px;
+            font-size: 10px;
+        }
+
+        /* Modal customizations */
+        .modal-content {
+            border-radius: 12px;
+            border: none;
+        }
+
+        .modal-header {
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
+        }
+
+        .modal-footer {
+            border-bottom-left-radius: 12px;
+            border-bottom-right-radius: 12px;
+        }
+
+        /* Ajustes para modal no mobile */
+        @media (max-width: 768px) {
+            .modal {
+                z-index: 3000 !important;
+                padding-top: 80px !important;
+            }
+
+            .modal-dialog {
+                margin: 10px;
+                max-width: calc(100vw - 20px);
+                margin-top: 20px;
+            }
+
+            .modal-content {
+                max-height: calc(100vh - 120px);
+                overflow-y: auto;
+            }
+        }
+
+        /* Analytics Card */
+        .analytics-card {
+            position: absolute;
+            background: var(--white);
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            z-index: 1001;
+            width: 320px;
+            border: 2px solid var(--primary-green);
+            transition: all 0.3s ease;
+        }
+
+        .analytics-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .analytics-header h6 {
+            font-size: 16px;
+            color: var(--dark-green);
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .analytics-controls {
+            display: flex;
+            gap: 5px;
+        }
+
+        .analytics-minimize,
+        .analytics-close {
+            background: none;
+            border: none;
+            color: var(--dark-gray);
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            padding: 5px;
+            border-radius: 3px;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .analytics-minimize:hover {
+            background: var(--light-green);
+            color: var(--primary-green);
+        }
+
+        .analytics-close:hover {
+            background: #ffebee;
+            color: #d32f2f;
+        }
+
+        .analytics-card.minimized .analytics-content {
+            display: none;
+        }
+
+        .analytics-card.minimized {
+            width: auto;
+            min-width: 200px;
+        }
+
+        .analytics-content {
+            font-size: 14px;
+        }
+
+        .analytics-section {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--medium-gray);
+        }
+
+        .analytics-title {
+            font-size: 13px;
+            color: var(--dark-green);
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+
+        .analytics-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--dark-gray);
+        }
+
+        .analytics-subtitle {
+            font-size: 11px;
+            color: var(--dark-gray);
+            opacity: 0.8;
+        }
+
+        /* Painel Lateral Direito para Dados Analíticos */
+        .analytics-sidebar {
+            position: fixed;
+            top: 0;
+            right: -350px;
+            width: 350px;
+            height: 100vh;
+            background: var(--white);
+            color: var(--dark-gray);
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: -2px 0 15px rgba(0,0,0,0.1);
+            border-left: 1px solid var(--medium-gray);
+            transition: right 0.3s ease;
+        }
+
+        .analytics-sidebar.visible {
+            right: 0;
+        }
+
+        .analytics-sidebar-header {
+            padding: 20px;
+            background: var(--primary-green);
+            color: white;
+            border-bottom: 2px solid var(--dark-green);
+        }
+
+        .analytics-sidebar-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .analytics-close-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.3s;
+        }
+
+        .analytics-close-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .analytics-sidebar-content {
+            padding: 20px;
+        }
+
+        .analytics-layer-info {
+            background: var(--light-green);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-left: 4px solid var(--primary-green);
+        }
+
+        .analytics-layer-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--dark-green);
+            margin-bottom: 5px;
+        }
+
+        .analytics-layer-type {
+            font-size: 12px;
+            color: var(--dark-gray);
+            opacity: 0.8;
+        }
+
+        .analytics-stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .analytics-stat-item {
+            background: var(--white);
+            border: 1px solid var(--medium-gray);
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .analytics-stat-label {
+            font-size: 11px;
+            color: var(--dark-gray);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+
+        .analytics-stat-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--dark-green);
+        }
+
+        .analytics-chart-section {
+            margin-bottom: 25px;
+        }
+
+        .analytics-section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--dark-green);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .analytics-chart-container {
+            background: var(--white);
+            border: 1px solid var(--medium-gray);
+            border-radius: 8px;
+            padding: 15px;
+            height: 250px;
+        }
+
+        .analytics-top-list {
+            background: var(--white);
+            border: 1px solid var(--medium-gray);
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .analytics-top-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--light-green);
+        }
+
+        .analytics-top-item:last-child {
+            border-bottom: none;
+        }
+
+        .analytics-top-rank {
+            font-weight: bold;
+            color: var(--primary-green);
+            margin-right: 10px;
+        }
+
+        .analytics-top-name {
+            flex: 1;
+            font-size: 12px;
+            color: var(--dark-gray);
+        }
+
+        .analytics-top-value {
+            font-weight: 600;
+            font-size: 12px;
+            color: var(--dark-green);
+        }
+
+        .analytics-export-section {
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 2px solid var(--light-green);
+        }
+
+        .analytics-export-btn {
+            width: 100%;
+            background: var(--primary-green);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .analytics-export-btn:hover {
+            background: var(--dark-green);
+        }
+
+        .analytics-export-btn:disabled {
+            background: var(--medium-gray);
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo-container">
+                <img src="/static/images/ferticore-logo-full.png" alt="FertiCore" class="logo-image">
+                <div class="logo-subtitle">Sistema de Visualização Agrícola</div>
+            </div>
+        </div>
+
+        <ul class="sidebar-menu">
+            <li>
+                <a href="#" class="active">
+                    <i class="fas fa-map"></i>
+                    Mapa Principal
+                </a>
+            </li>
+            <li>
+                <a href="/analise-potencial">
+                    <i class="fas fa-chart-line"></i>
+                    Análise Comercial
+                </a>
+            </li>
+            <li>
+                <a href="/analise-territorial">
+                    <i class="fas fa-map-marked-alt"></i>
+                    Análise Territorial
+                </a>
+            </li>
+            <li>
+                <a href="/revendas">
+                    <i class="fas fa-store"></i>
+                    Cadastro de Revendas
+                </a>
+            </li>
+            <li>
+                <a href="/vendedores">
+                    <i class="fas fa-user-plus"></i>
+                    Cadastro de Vendedores
+
+                </a>
+            </li>
+            <li>
+                <a href="/">
+                    <i class="fas fa-download"></i>
+                    Exportações
+                </a>
+            </li>
+            <li>
+                <a href="#" onclick="alert('Funcionalidade em desenvolvimento')">
+                    <i class="fas fa-cog"></i>
+                    Configurações
+                </a>
+            </li>
+        </ul>
+
+        <div class="layers-section">
+            <div class="layers-title">
+                <i class="fas fa-layer-group me-2"></i>
+                Camadas
+            </div>
+
+            <!-- Add Layer Button -->
+            <button class="btn btn-success w-100 mb-3" id="add-layer-btn" data-bs-toggle="modal" data-bs-target="#layerModal">
+                <i class="fas fa-plus me-2"></i>
+                Adicionar Camada
+            </button>
+
+            <div id="active-layers">
+                <div class="layers-subtitle mb-2">Camadas Ativas</div>
+                <div id="layers-list" class="mb-3">
+                    <div class="text-muted text-center" style="font-size: 12px;">
+                        Nenhuma camada ativa
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar Overlay para Mobile -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <!-- Mobile Header -->
+    <header class="mobile-header d-md-none">
+        <div class="mobile-header-content">
+            <button class="mobile-menu-btn" id="mobile-menu-toggle">
+                <i class="fas fa-bars"></i>
+            </button>
+            <img src="/static/images/ferticore-logo-full.png" alt="FertiCore" class="mobile-logo">
+            <div style="width: 40px;"></div> <!-- Spacer para centralizar a logo -->
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="main-content" id="main-content">
+        <div id="map" style="width: 100%; height: 100vh; min-height: 400px;"></div>
+
+        <!-- Container for Analytics Cards (mantido para compatibilidade, mas não usado) -->
+        <div id="analytics-cards-container" style="display: none;"></div>
+    </div>
+
+    <!-- Painel Lateral Direito para Dados Analíticos -->
+    <div class="analytics-sidebar" id="analytics-sidebar">
+        <div class="analytics-sidebar-header">
+            <h3 class="analytics-sidebar-title">
+                <span><i class="fas fa-chart-line me-2"></i>Dados Analíticos</span>
+                <button class="analytics-close-btn" onclick="hideAnalyticsSidebar()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </h3>
+        </div>
+
+        <div class="analytics-sidebar-content" id="analytics-sidebar-content">
+            <div class="text-center text-muted">
+                <i class="fas fa-layer-group" style="font-size: 48px; opacity: 0.3;"></i>
+                <p>Adicione uma camada para ver os dados analíticos</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Footer (only visible on mobile) -->
+    <footer class="mobile-footer">
+        <div class="mobile-footer-content">
+            <div class="footer-section">
+                <button class="footer-btn secondary" onclick="window.location.href='/revendas'">
+                    <i class="fas fa-store"></i>
+                    <span>Revendas</span>
+                </button>
+            </div>
+            <div class="footer-section">
+                <button class="footer-btn secondary" onclick="window.location.href='/vendedores'">
+                    <i class="fas fa-user-tie"></i>
+                    <span>Vendedores</span>
+                </button>
+            </div>
+            <div class="footer-section footer-center">
+                <button class="footer-btn primary" onclick="openLayerModal()">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Nova Camada</span>
+                </button>
+            </div>
+            <div class="footer-section">
+                <button class="footer-btn secondary" onclick="window.location.href='/analise-potencial'">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Comercial</span>
+                </button>
+            </div>
+            <div class="footer-section">
+                <button class="footer-btn secondary" onclick="window.location.href='/analise-territorial'">
+                    <i class="fas fa-map-marked-alt"></i>
+                    <span>Territorial</span>
+                </button>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Layer Creation Modal -->
+    <div class="modal fade" id="layerModal" tabindex="-1" aria-labelledby="layerModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header" style="background: var(--primary-green); color: white;">
+                    <h5 class="modal-title" id="layerModalLabel">
+                        <i class="fas fa-layer-group me-2"></i>
+                        Adicionar Nova Camada
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="form-group mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-layer-group me-1"></i>
+                                    Tipo de Camada
+                                </label>
+                                <select id="layer-type-selector" class="form-select">
+                                    <option value="">Selecione o tipo de camada...</option>
+                                    <option value="crop">🌱 Culturas Agrícolas</option>
+                                    <option value="fertilizer">🧪 Fertilizantes</option>
+                                    <option value="agrotoxicos">🚫 Agrotóxicos</option>
+                                    <option value="consultoria">📋 Consultoria Técnica</option>
+                                    <option value="corretivos">⚗️ Corretivos</option>
+                                    <option value="despesas">💰 Despesas</option>
+                                    <option value="escolaridade">🎓 Escolaridade</option>
+                                    <option value="receitas">💵 Receitas</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Configurações específicas para Camada de Fertilizantes -->
+                    <div id="fertilizer-layer-config" class="layer-config" style="display: none;">
+                        <hr>
+                        <h6 class="mb-3">
+                            <i class="fas fa-flask me-2"></i>
+                            Configurações da Camada de Fertilizantes
+                        </h6>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-tag me-1"></i>
+                                        Nome da Camada
+                                    </label>
+                                    <input type="text" id="fertilizer-layer-name" class="form-control" placeholder="Ex: Estabelecimentos - São Paulo">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-flask me-1"></i>
+                                        Categoria de Fertilizantes
+                                    </label>
+                                    <select id="modal-fertilizer-selector" class="form-select">
+                                        <option value="">Selecione uma categoria...</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-map-marked-alt me-1"></i>
+                                        Filtro por Estado
+                                    </label>
+                                    <select id="modal-fertilizer-state-selector" class="form-select">
+                                        <option value="">Todos os estados</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-palette me-1"></i>
+                                        Cor da Visualização
+                                    </label>
+                                    <select id="modal-fertilizer-color-selector" class="form-select">
+                                        <option value="#FF9800">Laranja</option>
+                                        <option value="#2196F3">Azul</option>
+                                        <option value="#4CAF50">Verde</option>
+                                        <option value="#9C27B0">Roxo</option>
+                                        <option value="#F44336">Vermelho</option>
+                                        <option value="#607D8B">Cinza Azulado</option>
+                                        <option value="#795548">Marrom</option>
+                                        <option value="#009688">Verde-azulado</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Configurações específicas para Camada de Culturas -->
+                    <div id="crop-layer-config" class="layer-config" style="display: none;">
+                        <hr>
+                        <h6 class="mb-3">
+                            <i class="fas fa-leaf me-2"></i>
+                            Configurações da Camada de Culturas
+                        </h6>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-tag me-1"></i>
+                                        Nome da Camada
+                                    </label>
+                                    <input type="text" id="layer-name" class="form-control" placeholder="Ex: Soja - São Paulo">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-leaf me-1"></i>
+                                        Cultura Agrícola
+                                    </label>
+                                    <select id="modal-crop-selector" class="form-select">
+                                        <option value="">Selecione uma cultura...</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-map-marked-alt me-1"></i>
+                                        Filtro por Estado
+                                    </label>
+                                    <select id="modal-state-selector" class="form-select">
+                                        <option value="">Todos os estados</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-palette me-1"></i>
+                                        Cor da Visualização
+                                    </label>
+                                    <select id="modal-color-selector" class="form-select">
+                                        <option value="#4CAF50">Verde</option>
+                                        <option value="#2196F3">Azul</option>
+                                        <option value="#FF9800">Laranja</option>
+                                        <option value="#9C27B0">Roxo</option>
+                                        <option value="#F44336">Vermelho</option>
+                                        <option value="#607D8B">Cinza Azulado</option>
+                                        <option value="#795548">Marrom</option>
+                                        <option value="#009688">Verde-azulado</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-map-marker-alt me-1"></i>
+                                Filtro por Raio (opcional)
+                            </label>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <input type="number" id="modal-radius-km" class="form-control" placeholder="Raio (km)" min="1" max="500">
+                                </div>
+                                <div class="col-md-4">
+                                    <input type="number" id="modal-radius-lat" class="form-control" placeholder="Latitude" step="any">
+                                </div>
+                                <div class="col-md-4">
+                                    <input type="number" id="modal-radius-lng" class="form-control" placeholder="Longitude" step="any">
+                                </div>
+                            </div>
+                            <small class="text-muted">Deixe em branco para mostrar todos os municípios</small>
+                        </div>
+                    </div>
+
+                    <!-- Configurações específicas para Agrotóxicos -->
+                    <div id="agrotoxicos-layer-config" class="layer-config" style="display: none;">
+                        <hr>
+                        <h6 class="mb-3">
+                            <i class="fas fa-ban me-2"></i>
+                            Configurações da Camada de Agrotóxicos
+                        </h6>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-tag me-1"></i>
+                                        Nome da Camada
+                                    </label>
+                                    <input type="text" id="agrotoxicos-layer-name" class="form-control" placeholder="Ex: Fungicidas - Brasil">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-ban me-1"></i>
+                                        Categoria de Agrotóxicos
+                                    </label>
+                                    <select id="modal-agrotoxicos-selector" class="form-select">
+                                        <option value="">Selecione uma categoria...</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-map-marked-alt me-1"></i>
+                                        Filtro por Estado
+                                    </label>
+                                    <select id="modal-agrotoxicos-state-selector" class="form-select">
+                                        <option value="">Todos os estados</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-palette me-1"></i>
+                                        Cor da Visualização
+                                    </label>
+                                    <select id="modal-agrotoxicos-color-selector" class="form-select">
+                                        <option value="#F44336">Vermelho</option>
+                                        <option value="#FF9800">Laranja</option>
+                                        <option value="#9C27B0">Roxo</option>
+                                        <option value="#607D8B">Cinza Azulado</option>
+                                        <option value="#795548">Marrom</option>
+                                        <option value="#2196F3">Azul</option>
+                                        <option value="#4CAF50">Verde</option>
+                                        <option value="#009688">Verde-azulado</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Configurações específicas para Consultoria Técnica -->
+                    <div id="consultoria-layer-config" class="layer-config" style="display: none;">
+                        <hr>
+                        <h6 class="mb-3">
+                            <i class="fas fa-clipboard-list me-2"></i>
+                            Configurações da Camada de Consultoria Técnica
+                        </h6>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-tag me-1"></i>
+                                        Nome da Camada
+                                    </label>
+                                    <input type="text" id="consultoria-layer-name" class="form-control" placeholder="Ex: Assistência Técnica - São Paulo">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-clipboard-list me-1"></i>
+                                        Categoria de Consultoria
+                                    </label>
+                                    <select id="modal-consultoria-selector" class="form-select">
+                                        <option value="">Selecione uma categoria...</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-map-marked-alt me-1"></i>
+                                        Filtro por Estado
+                                    </label>
+                                    <select id="modal-consultoria-state-selector" class="form-select">
+                                        <option value="">Todos os estados</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-palette me-1"></i>
+                                        Cor da Visualização
+                                    </label>
+                                    <select id="modal-consultoria-color-selector" class="form-select">
+                                        <option value="#2196F3">Azul</option>
+                                        <option value="#4CAF50">Verde</option>
+                                        <option value="#FF9800">Laranja</option>
+                                        <option value="#9C27B0">Roxo</option>
+                                        <option value="#F44336">Vermelho</option>
+                                        <option value="#607D8B">Cinza Azulado</option>
+                                        <option value="#795548">Marrom</option>
+                                        <option value="#009688">Verde-azulado</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Configurações específicas para Corretivos -->
+                    <div id="corretivos-layer-config" class="layer-config" style="display: none;">
+                        <hr>
+                        <h6 class="mb-3">
+                            <i class="fas fa-vial me-2"></i>
+                            Configurações da Camada de Corretivos
+                        </h6>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-tag me-1"></i>
+                                        Nome da Camada
+                                    </label>
+                                    <input type="text" id="corretivos-layer-name" class="form-control" placeholder="Ex: Calcário - Brasil">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-vial me-1"></i>
+                                        Categoria de Corretivos
+                                    </label>
+                                    <select id="modal-corretivos-selector" class="form-select">
+                                        <option value="">Selecione uma categoria...</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-map-marked-alt me-1"></i>
+                                        Filtro por Estado
+                                    </label>
+                                    <select id="modal-corretivos-state-selector" class="form-select">
+                                        <option value="">Todos os estados</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-palette me-1"></i>
+                                        Cor da Visualização
+                                    </label>
+                                    <select id="modal-corretivos-color-selector" class="form-select">
+                                        <option value="#795548">Marrom</option>
+                                        <option value="#FF9800">Laranja</option>
+                                        <option value="#607D8B">Cinza Azulado</option>
+                                        <option value="#4CAF50">Verde</option>
+                                        <option value="#2196F3">Azul</option>
+                                        <option value="#9C27B0">Roxo</option>
+                                        <option value="#F44336">Vermelho</option>
+                                        <option value="#009688">Verde-azulado</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Configurações específicas para Despesas -->
+                    <div id="despesas-layer-config" class="layer-config" style="display: none;">
+                        <hr>
+                        <h6 class="mb-3">
+                            <i class="fas fa-dollar-sign me-2"></i>
+                            Configurações da Camada de Despesas
+                        </h6>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-tag me-1"></i>
+                                        Nome da Camada
+                                    </label>
+                                    <input type="text" id="despesas-layer-name" class="form-control" placeholder="Ex: Despesas com Pessoal - Brasil">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-dollar-sign me-1"></i>
+                                        Categoria de Despesas
+                                    </label>
+                                    <select id="modal-despesas-selector" class="form-select">
+                                        <option value="">Selecione uma categoria...</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-map-marked-alt me-1"></i>
+                                        Filtro por Estado
+                                    </label>
+                                    <select id="modal-despesas-state-selector" class="form-select">
+                                        <option value="">Todos os estados</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-palette me-1"></i>
+                                        Cor da Visualização
+                                    </label>
+                                    <select id="modal-despesas-color-selector" class="form-select">
+                                        <option value="#F44336">Vermelho</option>
+                                        <option value="#9C27B0">Roxo</option>
+                                        <option value="#FF9800">Laranja</option>
+                                        <option value="#607D8B">Cinza Azulado</option>
+                                        <option value="#795548">Marrom</option>
+                                        <option value="#2196F3">Azul</option>
+                                        <option value="#4CAF50">Verde</option>
+                                        <option value="#009688">Verde-azulado</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Configurações específicas para Escolaridade -->
+                    <div id="escolaridade-layer-config" class="layer-config" style="display: none;">
+                        <hr>
+                        <h6 class="mb-3">
+                            <i class="fas fa-graduation-cap me-2"></i>
+                            Configurações da Camada de Escolaridade
+                        </h6>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-tag me-1"></i>
+                                        Nome da Camada
+                                    </label>
+                                    <input type="text" id="escolaridade-layer-name" class="form-control" placeholder="Ex: Ensino Superior - Brasil">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-graduation-cap me-1"></i>
+                                        Categoria de Escolaridade
+                                    </label>
+                                    <select id="modal-escolaridade-selector" class="form-select">
+                                        <option value="">Selecione uma categoria...</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-map-marked-alt me-1"></i>
+                                        Filtro por Estado
+                                    </label>
+                                    <select id="modal-escolaridade-state-selector" class="form-select">
+                                        <option value="">Todos os estados</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-palette me-1"></i>
+                                        Cor da Visualização
+                                    </label>
+                                    <select id="modal-escolaridade-color-selector" class="form-select">
+                                        <option value="#2196F3">Azul</option>
+                                        <option value="#4CAF50">Verde</option>
+                                        <option value="#9C27B0">Roxo</option>
+                                        <option value="#FF9800">Laranja</option>
+                                        <option value="#607D8B">Cinza Azulado</option>
+                                        <option value="#795548">Marrom</option>
+                                        <option value="#F44336">Vermelho</option>
+                                        <option value="#009688">Verde-azulado</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Configurações específicas para Receitas -->
+                    <div id="receitas-layer-config" class="layer-config" style="display: none;">
+                        <hr>
+                        <h6 class="mb-3">
+                            <i class="fas fa-money-bill-wave me-2"></i>
+                            Configurações da Camada de Receitas
+                        </h6>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-tag me-1"></i>
+                                        Nome da Camada
+                                    </label>
+                                    <input type="text" id="receitas-layer-name" class="form-control" placeholder="Ex: Receita Animal - Brasil">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-money-bill-wave me-1"></i>
+                                        Categoria de Receitas
+                                    </label>
+                                    <select id="modal-receitas-selector" class="form-select">
+                                        <option value="">Selecione uma categoria...</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-map-marked-alt me-1"></i>
+                                        Filtro por Estado
+                                    </label>
+                                    <select id="modal-receitas-state-selector" class="form-select">
+                                        <option value="">Todos os estados</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-palette me-1"></i>
+                                        Cor da Visualização
+                                    </label>
+                                    <select id="modal-receitas-color-selector" class="form-select">
+                                        <option value="#4CAF50">Verde</option>
+                                        <option value="#2196F3">Azul</option>
+                                        <option value="#FF9800">Laranja</option>
+                                        <option value="#9C27B0">Roxo</option>
+                                        <option value="#607D8B">Cinza Azulado</option>
+                                        <option value="#795548">Marrom</option>
+                                        <option value="#F44336">Vermelho</option>
+                                        <option value="#009688">Verde-azulado</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Configurações específicas para Revendas -->
+                    <div id="revendas-layer-config" class="layer-config" style="display: none;">
+                        <hr>
+                        <h6 class="mb-3">
+                            <i class="fas fa-store me-2"></i>
+                            Configurações da Camada de Revendas
+                        </h6>
+
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-store me-1"></i>
+                                        Selecionar Revenda Cadastrada
+                                    </label>
+                                    <select class="form-select" id="revendas-selector">
+                                        <option value="">Carregando revendas...</option>
+                                    </select>
+                                    <div class="form-text">
+                                        <a href="/revendas" target="_blank" class="text-primary">
+                                            <i class="fas fa-plus me-1"></i>
+                                            Cadastrar nova revenda
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-tag me-1"></i>
+                                        Nome da Camada
+                                    </label>
+                                    <input type="text" id="revendas-layer-name" class="form-control"
+                                           placeholder="Nome da camada será preenchido automaticamente" readonly>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-palette me-1"></i>
+                                        Cor da Visualização
+                                    </label>
+                                    <input type="color" class="form-control form-control-color"
+                                           id="revendas-color-selector" value="#FF5722">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info" style="font-size: 13px;">
+                            <i class="fas fa-info-circle me-2"></i>
+                            A visualização mostrará o território de atuação da revenda selecionada no mapa.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>
+                        Cancelar
+                    </button>
+                    <button type="button" class="btn btn-success" id="save-layer-btn">
+                        <i class="fas fa-save me-1"></i>
+                        Salvar Camada
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Exportação de Dados -->
+    <div class="modal fade" id="exportModal" tabindex="-1" aria-labelledby="exportModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header" style="background: var(--primary-green); color: white;">
+                    <h5 class="modal-title" id="exportModalLabel">
+                        <i class="fas fa-download me-2"></i>
+                        Exportar Dados
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Selecione a base de dados e o formato para exportar os dados:</p>
+                    <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-database me-1"></i>
+                                        Base de Dados
+                                    </label>
+                                    <select id="export-database-selector" class="form-select">
+                                        <option value="">Selecione uma base...</option>
+                                        <option value="crops">Culturas</option>
+                                        <option value="fertilizers">Fertilizantes</option>
+                                    </select>
+                                </div>
+                            </div>
+                    <button class="btn btn-success w-100" id="download-complete-data" onclick="downloadCompleteData()">
+                        <span id="download-icon" class="me-2">
+                            <i class="fas fa-download"></i>
+                        </span>
+                        <span id="download-text">Baixar Base Completa (.xlsx)</span>
+                    </button>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>
+                        Fechar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom JS -->
+    <script src="/static/js/map.js"></script>
+
+    <script>
+        // Global variables for layer management
+        let activeLayers = [];
+        let layerIdCounter = 0;
+
+        // Tornar activeLayers acessível globalmente
+        window.activeLayers = activeLayers;
+
+
+
+        // Variable to prevent multiple initializations
+        let isInitialized = false;
+
+        // Initialize everything when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            if (isInitialized) {
+                console.log('Already initialized, skipping...');
+                return;
+            }
+            
+            console.log('DOM loaded, starting initialization...');
+            isInitialized = true;
+
+            if (typeof initializeMap === 'function') {
+                initializeMap();
+                console.log('Funções do mapa carregadas com sucesso');
+            } else {
+                console.error('initializeMap function not found');
+            }
+
+            if (typeof loadAllDataSources === 'function') {
+                loadAllDataSources();
+            }
+
+            if (typeof setupEventListeners === 'function') {
+                setupEventListeners();
+            }
+
+            initializeLayerModal();
+        });
+
+        function initializeLayerModal() {
+            // Load initial data for selectors
+            loadCropsForModal();
+            loadStatesForModal();
+            loadFertilizerCategories();
+            loadAgrotoxicosCategories();
+            loadConsultoriaCategories();
+            loadCorretivosCategories();
+            loadReceitasCategories();
+            loadDespesasCategories();
+            loadEscolaridadeCategories();
+            loadRevendasForModal();
+
+            // Layer type change handler
+            const layerTypeSelector = document.getElementById('layer-type-selector');
+            if (layerTypeSelector) {
+                layerTypeSelector.addEventListener('change', function() {
+                    const selectedType = this.value;
+                    console.log('Layer type selected:', selectedType);
+                    showLayerConfig(selectedType);
+                });
+                console.log('Layer type selector event listener added');
+            } else {
+                console.error('Layer type selector not found');
+            }
+
+            // Save layer button
+            document.getElementById('save-layer-btn').addEventListener('click', saveLayer);
+
+            // Revendas selector change handler
+            document.getElementById('revendas-selector').addEventListener('change', function() {
+                const selectedOption = this.options[this.selectedIndex];
+                if (selectedOption.value) {
+                    // Auto-fill layer name based on selected revenda
+                    const layerNameInput = document.getElementById('revendas-layer-name');
+                    if (layerNameInput) {
+                        layerNameInput.value = `Território - ${selectedOption.text}`;
+                    }
+                }
+            });
+        }
+
+        // Function to show layer configuration panels
+        function showLayerConfig(type) {
+            console.log(`Tentando mostrar configuração para tipo: ${type}`);
+
+            // Hide all config panels
+            const configPanels = [
+                'crop-layer-config',
+                'fertilizer-layer-config',
+                'agrotoxicos-layer-config',
+                'consultoria-layer-config',
+                'corretivos-layer-config',
+                'despesas-layer-config',
+                'escolaridade-layer-config',
+                'receitas-layer-config',
+                'revendas-layer-config'
+            ];
+
+            configPanels.forEach(panelId => {
+                const panel = document.getElementById(panelId);
+                if (panel) {
+                    panel.style.display = 'none';
+                }
+            });
+
+            // Show selected config panel
+            if (type) {
+                const configPanel = document.getElementById(`${type}-layer-config`);
+                if (configPanel) {
+                    configPanel.style.display = 'block';
+                    console.log(`Painel de configuração exibido para: ${type}`);
+                } else {
+                    console.error(`Painel de configuração não encontrado para: ${type}-layer-config`);
+                }
+            }
+        }
+
+        // Make showLayerConfig available globally
+        window.showLayerConfig = showLayerConfig;
+
+        async function loadCropsForModal() {
+            try {
+                const response = await fetch('/api/crops');
+                const data = await response.json();
+
+                if (data.success) {
+                    const selector = document.getElementById('modal-crop-selector');
+                    selector.innerHTML = '<option value="">Selecione uma cultura...</option>';
+
+                    data.crops.forEach(crop => {
+                        const option = document.createElement('option');
+                        option.value = crop;
+                        option.textContent = crop;
+                        selector.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Erro ao carregar culturas:', error);
+            }
+        }
+
+        async function loadStatesForModal() {
+            try {
+                const response = await fetch('/api/brazilian-states');
+                const data = await response.json();
+
+                if (data.success) {
+                    const stateSelectors = [
+                        'modal-state-selector',
+                        'modal-fertilizer-state-selector',
+                        'modal-agrotoxicos-state-selector',
+                        'modal-consultoria-state-selector',
+                        'modal-corretivos-state-selector',
+                        'modal-receitas-state-selector',
+                        'modal-despesas-state-selector',
+                        'modal-escolaridade-state-selector'
+                    ];
+
+                    stateSelectors.forEach(selectorId => {
+                        const selector = document.getElementById(selectorId);
+                        if (selector) {
+                            selector.innerHTML = '<option value="">Todos os estados</option>';
+
+                            data.states.forEach(state => {
+                                const option = document.createElement('option');
+                                option.value = state.code;
+                                option.textContent = `${state.name} (${state.code})`;
+                                selector.appendChild(option);
+                            });
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Erro ao carregar estados:', error);
+            }
+        }
+
+        async function loadCategoryData(apiEndpoint, selectorId) {
+            try {
+                const response = await fetch(apiEndpoint);
+                const data = await response.json();
+
+                if (data.success) {
+                    const selector = document.getElementById(selectorId);
+                    if (selector) {
+                        selector.innerHTML = '<option value="">Selecione uma categoria...</option>';
+
+                        data.categories.forEach(category => {
+                            const option = document.createElement('option');
+                            option.value = category;
+                            option.textContent = category;
+                            selector.appendChild(option);
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error(`Erro ao carregar categorias de ${apiEndpoint}:`, error);
+            }
+        }
+
+        function loadFertilizerCategories() {
+            loadCategoryData('/api/fertilizer-categories', 'modal-fertilizer-selector');
+        }
+
+        function loadAgrotoxicosCategories() {
+            loadCategoryData('/api/agrotoxico/categories', 'modal-agrotoxicos-selector');
+        }
+
+        function loadConsultoriaCategories() {
+            loadCategoryData('/api/consultoria/categories', 'modal-consultoria-selector');
+        }
+
+        function loadCorretivosCategories() {
+            loadCategoryData('/api/corretivos/categories', 'modal-corretivos-selector');
+        }
+
+        function loadReceitasCategories() {
+            loadCategoryData('/api/receita/categories', 'modal-receitas-selector');
+        }
+
+        function loadDespesasCategories() {
+            loadCategoryData('/api/despesa/categories', 'modal-despesas-selector');
+        }
+
+        function loadEscolaridadeCategories() {
+            loadCategoryData('/api/escolaridade/categories', 'modal-escolaridade-selector');
+        }
+
+        async function loadRevendasForModal() {
+            try {
+                const response = await fetch('/api/revendas');
+                const data = await response.json();
+
+                if (data.success) {
+                    const selector = document.getElementById('revendas-selector');
+                    selector.innerHTML = '<option value="">Selecione uma revenda...</option>';
+
+                    data.revendas.forEach(revenda => {
+                        const option = document.createElement('option');
+                        option.value = revenda.id;
+                        option.textContent = revenda.nome;
+                        // Store territory data directly in the option for later use
+                        option.dataset.territory = JSON.stringify(revenda.municipios || []);
+                        selector.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Erro ao carregar revendas:', error);
+            }
+        }
+
+        function saveLayer() {
+            const layerType = document.getElementById('layer-type-selector').value;
+
+            if (!layerType) {
+                alert('Por favor, selecione um tipo de dados.');
+                return;
+            }
+
+            let layerData = null;
+            let isValid = false;
+
+            switch (layerType) {
+                case 'crop':
+                    const layerName = document.getElementById('layer-name').value;
+                    const crop = document.getElementById('modal-crop-selector').value;
+                    const state = document.getElementById('modal-state-selector').value;
+                    const color = document.getElementById('modal-color-selector').value;
+
+                    if (!layerName || !crop) {
+                        alert('Por favor, preencha o nome da camada e selecione uma cultura.');
+                        return;
+                    }
+
+                    layerData = {
+                        type: 'crop',
+                        name: layerName,
+                        crop: crop,
+                        state: state,
+                        color: color,
+                        dataColumn: 'harvested_area',
+                        unit: 'hectares'
+                    };
+                    isValid = true;
+                    break;
+
+                case 'fertilizer':
+                    const fertilizerLayerName = document.getElementById('fertilizer-layer-name').value;
+                    const fertilizerCategory = document.getElementById('modal-fertilizer-selector').value;
+                    const fertilizerState = document.getElementById('modal-fertilizer-state-selector').value;
+                    const fertilizerColor = document.getElementById('modal-fertilizer-color-selector').value;
+
+                    if (!fertilizerLayerName || !fertilizerCategory) {
+                        alert('Por favor, preencha o nome da camada e selecione uma categoria.');
+                        return;
+                    }
+
+                    layerData = {
+                        type: 'fertilizer',
+                        name: fertilizerLayerName,
+                        category: fertilizerCategory,
+                        state: fertilizerState,
+                        color: fertilizerColor,
+                        dataColumn: 'value',
+                        unit: 'estabelecimentos'
+                    };
+                    isValid = true;
+                    break;
+
+                case 'agrotoxicos':
+                    const agrotoxicosLayerName = document.getElementById('agrotoxicos-layer-name').value;
+                    const agrotoxicosCategory = document.getElementById('modal-agrotoxicos-selector').value;
+                    const agrotoxicosState = document.getElementById('modal-agrotoxicos-state-selector').value;
+                    const agrotoxicosColor = document.getElementById('modal-agrotoxicos-color-selector').value;
+
+                    if (!agrotoxicosLayerName || !agrotoxicosCategory) {
+                        alert('Por favor, preencha o nome da camada e selecione uma categoria.');
+                        return;
+                    }
+
+                    layerData = {
+                        type: 'agrotoxicos',
+                        name: agrotoxicosLayerName,
+                        category: agrotoxicosCategory,
+                        state: agrotoxicosState,
+                        color: agrotoxicosColor,
+                        dataColumn: 'value',
+                        unit: 'estabelecimentos'
+                    };
+                    isValid = true;
+                    break;
+
+                case 'consultoria':
+                    const consultoriaLayerName = document.getElementById('consultoria-layer-name').value;
+                    const consultoriaCategory = document.getElementById('modal-consultoria-selector').value;
+                    const consultoriaState = document.getElementById('modal-consultoria-state-selector').value;
+                    const consultoriaColor = document.getElementById('modal-consultoria-color-selector').value;
+
+                    if (!consultoriaLayerName || !consultoriaCategory) {
+                        alert('Por favor, preencha o nome da camada e selecione uma categoria.');
+                        return;
+                    }
+
+                    layerData = {
+                        type: 'consultoria',
+                        name: consultoriaLayerName,
+                        category: consultoriaCategory,
+                        state: consultoriaState,
+                        color: consultoriaColor,
+                        dataColumn: 'value',
+                        unit: 'estabelecimentos'
+                    };
+                    isValid = true;
+                    break;
+
+                case 'corretivos':
+                    const corretivosLayerName = document.getElementById('corretivos-layer-name').value;
+                    const corretivosCategory = document.getElementById('modal-corretivos-selector').value;
+                    const corretivosState = document.getElementById('modal-corretivos-state-selector').value;
+                    const corretivosColor = document.getElementById('modal-corretivos-color-selector').value;
+
+                    if (!corretivosLayerName || !corretivosCategory) {
+                        alert('Por favor, preencha o nome da camada e selecione uma categoria.');
+                        return;
+                    }
+
+                    layerData = {
+                        type: 'corretivos',
+                        name: corretivosLayerName,
+                        category: corretivosCategory,
+                        state: corretivosState,
+                        color: corretivosColor,
+                        dataColumn: 'value',
+                        unit: 'estabelecimentos'
+                    };
+                    isValid = true;
+                    break;
+
+                case 'receitas':
+                    const receitasLayerName = document.getElementById('receitas-layer-name').value;
+                    const receitasCategory = document.getElementById('modal-receitas-selector').value;
+                    const receitasState = document.getElementById('modal-receitas-state-selector').value;
+                    const receitasColor = document.getElementById('modal-receitas-color-selector').value;
+
+                    if (!receitasLayerName || !receitasCategory) {
+                        alert('Por favor, preencha o nome da camada e selecione uma categoria.');
+                        return;
+                    }
+
+                    layerData = {
+                        type: 'receitas',
+                        name: receitasLayerName,
+                        category: receitasCategory,
+                        state: receitasState,
+                        color: receitasColor,
+                        dataColumn: 'value',
+                        unit: 'R$'
+                    };
+                    isValid = true;
+                    break;
+
+                case 'despesas':
+                    const despesasLayerName = document.getElementById('despesas-layer-name').value;
+                    const despesasCategory = document.getElementById('modal-despesas-selector').value;
+                    const despesasState = document.getElementById('modal-despesas-state-selector').value;
+                    const despesasColor = document.getElementById('modal-despesas-color-selector').value;
+
+                    if (!despesasLayerName || !despesasCategory) {
+                        alert('Por favor, preencha o nome da camada e selecione uma categoria.');
+                        return;
+                    }
+
+                    layerData = {
+                        type: 'despesas',
+                        name: despesasLayerName,
+                        category: despesasCategory,
+                        state: despesasState,
+                        color: despesasColor,
+                        dataColumn: 'value',
+                        unit: 'R$'
+                    };
+                    isValid = true;
+                    break;
+
+                case 'escolaridade':
+                    const escolaridadeLayerName = document.getElementById('escolaridade-layer-name').value;
+                    const escolaridadeCategory = document.getElementById('modal-escolaridade-selector').value;
+                    const escolaridadeState = document.getElementById('modal-escolaridade-state-selector').value;
+                    const escolaridadeColor = document.getElementById('modal-escolaridade-color-selector').value;
+
+                    if (!escolaridadeLayerName || !escolaridadeCategory) {
+                        alert('Por favor, preencha o nome da camada e selecione uma categoria.');
+                        return;
+                    }
+
+                    layerData = {
+                        type: 'escolaridade',
+                        name: escolaridadeLayerName,
+                        category: escolaridadeCategory,
+                        state: escolaridadeState,
+                        color: escolaridadeColor,
+                        dataColumn: 'value',
+                        unit: 'pessoas'
+                    };
+                    isValid = true;
+                    break;
+
+                case 'revendas':
+                    const revendaId = document.getElementById('revendas-selector').value;
+                    const revendaColor = document.getElementById('revendas-color-selector').value;
+                    const selectedOption = document.getElementById('revendas-selector').options[document.getElementById('revendas-selector').selectedIndex];
+
+                    if (!revendaId) {
+                        alert('Por favor, selecione uma revenda.');
+                        return;
+                    }
+
+                    layerData = {
+                        type: 'revendas',
+                        name: `Território - ${selectedOption.text}`,
+                        revendaId: revendaId,
+                        color: revendaColor,
+                        dataColumn: 'harvested_area', // Defaulting, actual data might be different
+                        unit: 'território',
+                        // Retrieve territory from the selected option's dataset
+                        territory: JSON.parse(selectedOption.dataset.territory || '[]')
+                    };
+                    isValid = true;
+                    break;
+
+                default:
+                    alert('Tipo de camada não suportado.');
+                    return;
+            }
+
+            if (isValid && layerData) {
+                // Generate unique ID
+                // Use Date.now() for a more unique ID, but ++layerIdCounter is simpler for this example
+                layerData.id = Date.now();
+                layerData.visible = true;
+
+                // Check if editing existing layer
+                const editingLayerId = document.getElementById('layerModal').getAttribute('data-editing-layer-id');
+                if (editingLayerId) {
+                    // Update existing layer
+                    const existingLayerIndex = activeLayers.findIndex(l => l.id == editingLayerId);
+                    if (existingLayerIndex !== -1) {
+                        // Remove old layer from map
+                        if (activeLayers[existingLayerIndex].mapLayer) {
+                            map.removeLayer(activeLayers[existingLayerIndex].mapLayer);
+                        }
+
+                        // Keep the same ID
+                        layerData.id = parseInt(editingLayerId);
+                        activeLayers[existingLayerIndex] = layerData;
+                    }
+
+                    // Clear editing attribute
+                    document.getElementById('layerModal').removeAttribute('data-editing-layer-id');
+                } else {
+                    // Add new layer
+                    activeLayers.push(layerData);
+                }
+
+                // Load the layer on map
+                if (typeof window.loadLayerByType === 'function') {
+                    window.loadLayerByType(layerData);
+                } else {
+                    console.error('loadLayerByType function not found');
+                }
+
+                // Update UI
+                if (typeof window.updateActiveLayersList === 'function') {
+                    window.updateActiveLayersList();
+                } else {
+                    console.error('updateActiveLayersList function not found');
+                }
+
+                // Close modal and reset form
+                const modal = bootstrap.Modal.getInstance(document.getElementById('layerModal'));
+                modal.hide();
+                resetLayerForm();
+
+                console.log('Camada salva:', layerData);
+            }
+        }
+
+        function resetLayerForm() {
+            // Reset layer type selector
+            document.getElementById('layer-type-selector').value = '';
+
+            // Hide all config panels
+            document.querySelectorAll('.layer-config').forEach(panel => {
+                panel.style.display = 'none';
+            });
+
+            // Reset all form fields
+            document.querySelectorAll('#layerModal input, #layerModal select').forEach(field => {
+                if (field.type === 'color') {
+                    // Reset color inputs to default values
+                    const defaults = {
+                        'modal-color-selector': '#4CAF50',
+                        'modal-fertilizer-color-selector': '#FF9800',
+                        'modal-agrotoxicos-color-selector': '#E91E63',
+                        'modal-consultoria-color-selector': '#9C27B0',
+                        'modal-corretivos-color-selector': '#795548',
+                        'modal-receitas-color-selector': '#4CAF50',
+                        'modal-despesas-color-selector': '#F44336',
+                        'modal-escolaridade-color-selector': '#3F51B5',
+                        'revendas-color-selector': '#FF5722'
+                    };
+                    field.value = defaults[field.id] || '#4CAF50';
+                } else {
+                    field.value = '';
+                }
+            });
+        }
+
+        function updateActiveLayersList() {
+            const container = document.getElementById('layers-list');
+            if (!container) return;
+
+            if (activeLayers.length === 0) {
+                container.innerHTML = '<div class="text-muted text-center" style="font-size: 12px;">Nenhuma camada ativa</div>';
+                return;
+            }
+
+            container.innerHTML = activeLayers.map(layer => {
+                const visibilityIcon = layer.visible ? 'fa-eye' : 'fa-eye-slash';
+                const visibilityClass = layer.visible ? '' : 'layer-hidden';
+
+                return `
+                    <div class="layer-item ${visibilityClass}" data-layer-id="${layer.id}">
+                        <div class="layer-item-header">
+                            <div style="display: flex; align-items: center;">
+                                <div class="layer-color" style="background-color: ${layer.color}; width: 18px; height: 18px; border-radius: 4px; margin-right: 10px; flex-shrink: 0;"></div>
+                                <div class="layer-details">
+                                    <div class="layer-name">${layer.name}</div>
+                                    <div class="layer-type">
+                                        ${getLayerTypeLabel(layer.type)}
+                                        ${layer.state ? ` - ${layer.state}` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="layer-controls">
+                                <button class="btn btn-sm btn-outline-primary" onclick="toggleLayerVisibility(${layer.id})" title="Alternar visibilidade">
+                                    <i class="fas ${visibilityIcon}"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="editLayer(${layer.id})" title="Editar camada">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" onclick="removeLayer(${layer.id})" title="Remover camada">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function getLayerTypeLabel(type) {
+            const labels = {
+                'crop': 'Culturas',
+                'fertilizer': 'Fertilizantes',
+                'agrotoxicos': 'Agrotóxicos',
+                'consultoria': 'Consultoria',
+                'corretivos': 'Corretivos',
+                'receitas': 'Receitas',
+                'despesas': 'Despesas',
+                'escolaridade': 'Escolaridade',
+                'revendas': 'Revendas'
+            };
+            return labels[type] || type;
+        }
+
+        function toggleLayerVisibility(layerId) {
+            const layer = activeLayers.find(l => l.id === layerId);
+            if (!layer) return;
+
+            layer.visible = !layer.visible;
+
+            if (layer.mapLayer) {
+                if (layer.visible) {
+                    layer.mapLayer.addTo(map);
+                    showAnalyticsCard(layer); // Show analytics when layer is made visible
+                } else {
+                    map.removeLayer(layer.mapLayer);
+                    hideAnalyticsCard(layerId); // Hide analytics when layer is made invisible
+                }
+            }
+
+            updateActiveLayersList();
+        }
+
+        function editLayer(layerId) {
+            const layer = activeLayers.find(l => l.id === layerId);
+            if (!layer) return;
+
+            // Populate modal with layer data
+            document.getElementById('layer-type-selector').value = layer.type;
+
+            // Trigger change event to show the correct config panel
+            const layerTypeSelector = document.getElementById('layer-type-selector');
+            const changeEvent = new Event('change');
+            layerTypeSelector.dispatchEvent(changeEvent);
+
+            // Populate fields based on layer type
+            switch (layer.type) {
+                case 'crop':
+                    document.getElementById('layer-name').value = layer.name;
+                    document.getElementById('modal-crop-selector').value = layer.crop;
+                    document.getElementById('modal-state-selector').value = layer.state || '';
+                    document.getElementById('modal-color-selector').value = layer.color;
+                    break;
+                case 'fertilizer':
+                    document.getElementById('fertilizer-layer-name').value = layer.name;
+                    document.getElementById('modal-fertilizer-selector').value = layer.category;
+                    document.getElementById('modal-fertilizer-state-selector').value = layer.state || '';
+                    document.getElementById('modal-fertilizer-color-selector').value = layer.color;
+                    break;
+                case 'agrotoxicos':
+                    document.getElementById('agrotoxicos-layer-name').value = layer.name;
+                    document.getElementById('modal-agrotoxicos-selector').value = layer.category;
+                    document.getElementById('modal-agrotoxicos-state-selector').value = layer.state || '';
+                    document.getElementById('modal-agrotoxicos-color-selector').value = layer.color;
+                    break;
+                case 'consultoria':
+                    document.getElementById('consultoria-layer-name').value = layer.name;
+                    document.getElementById('modal-consultoria-selector').value = layer.category;
+                    document.getElementById('modal-consultoria-state-selector').value = layer.state || '';
+                    document.getElementById('modal-consultoria-color-selector').value = layer.color;
+                    break;
+                case 'corretivos':
+                    document.getElementById('corretivos-layer-name').value = layer.name;
+                    document.getElementById('modal-corretivos-selector').value = layer.category;
+                    document.getElementById('modal-corretivos-state-selector').value = layer.state || '';
+                    document.getElementById('modal-corretivos-color-selector').value = layer.color;
+                    break;
+                case 'receitas':
+                    document.getElementById('receitas-layer-name').value = layer.name;
+                    document.getElementById('modal-receitas-selector').value = layer.category;
+                    document.getElementById('modal-receitas-state-selector').value = layer.state || '';
+                    document.getElementById('modal-receitas-color-selector').value = layer.color;
+                    break;
+                case 'despesas':
+                    document.getElementById('despesas-layer-name').value = layer.name;
+                    document.getElementById('modal-despesas-selector').value = layer.category;
+                    document.getElementById('modal-despesas-state-selector').value = layer.state || '';
+                    document.getElementById('modal-despesas-color-selector').value = layer.color;
+                    break;
+                case 'escolaridade':
+                    document.getElementById('escolaridade-layer-name').value = layer.name;
+                    document.getElementById('modal-escolaridade-selector').value = layer.category;
+                    document.getElementById('modal-escolaridade-state-selector').value = layer.state || '';
+                    document.getElementById('modal-escolaridade-color-selector').value = layer.color;
+                    break;
+                case 'revendas':
+                    document.getElementById('revendas-selector').value = layer.revendaId;
+                    document.getElementById('revendas-color-selector').value = layer.color;
+                    // Update layer name input if it exists
+                    const revendasLayerNameInput = document.getElementById('revendas-layer-name');
+                    if (revendasLayerNameInput) {
+                        revendasLayerNameInput.value = layer.name;
+                    }
+                    break;
+            }
+
+            // Store editing layer ID
+            document.getElementById('layerModal').setAttribute('data-editing-layer-id', layerId);
+
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('layerModal'));
+            modal.show();
+        }
+
+        function removeLayer(layerId) {
+            if (confirm('Tem certeza que deseja remover esta camada?')) {
+                const layer = activeLayers.find(l => l.id === layerId);
+
+                // Remove the layer from map if it exists
+                if (layer && layer.mapLayer) {
+                    map.removeLayer(layer.mapLayer);
+                }
+
+                // Remove analytics card
+                removeAnalyticsCard(layerId);
+
+                // Remove from activeLayers array
+                activeLayers = activeLayers.filter(l => l.id !== layerId);
+
+                // Update UI
+                updateActiveLayersList();
+
+                console.log('Camada removida:', layerId);
+            }
+        }
+
+        // Function to open the layer modal
+        function openLayerModal() {
+            // Reset form before opening
+            resetLayerForm();
+
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('layerModal'));
+            modal.show();
+        }
+
+        // Function to hide analytics sidebar
+        function hideAnalyticsSidebar() {
+            const sidebar = document.getElementById('analytics-sidebar');
+            if (sidebar) {
+                sidebar.classList.remove('visible');
+            }
+        }
+
+        // Function to show analytics sidebar
+        function showAnalyticsSidebar() {
+            const sidebar = document.getElementById('analytics-sidebar');
+            if (sidebar) {
+                sidebar.classList.add('visible');
+            }
+        }
+
+        // Placeholder functions for analytics
+        function getFilteredDataForLayer(layer) {
+            return layer.data || {};
+        }
+
+        function calculateLayerAnalytics(data) {
+            const values = Object.values(data).map(item => item.value || item.harvested_area || 0);
+            return {
+                total: values.reduce((a, b) => a + b, 0),
+                count: values.length,
+                average: values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0,
+                max: Math.max(...values, 0),
+                min: Math.min(...values, 0)
+            };
+        }
+
+        function formatNumber(num) {
+            return new Intl.NumberFormat('pt-BR').format(num);
+        }
+
+        function createAnalyticsChart(data, container) {
+            // Placeholder for chart creation
+            console.log('Creating chart for:', data);
+        }
+
+        function exportLayerData(layer) {
+            // Placeholder for data export
+            console.log('Exporting data for layer:', layer.name);
+        }
+
+        function downloadCompleteData() {
+            // Placeholder for complete data download
+            console.log('Downloading complete data');
+        }
+
+        // Make sure these functions are globally accessible
+        window.openLayerModal = openLayerModal;
+        window.hideAnalyticsSidebar = hideAnalyticsSidebar;
+        window.showAnalyticsSidebar = showAnalyticsSidebar;
+        window.activeLayers = activeLayers;
+        window.toggleLayerVisibility = toggleLayerVisibility;
+        window.editLayer = editLayer;
+        window.removeLayer = removeLayer;
+        window.updateActiveLayersList = updateActiveLayersList;
+        window.showAnalyticsCard = showAnalyticsCard;
+        window.hideAnalyticsCard = hideAnalyticsCard;
+        window.removeAnalyticsCard = removeAnalyticsCard;
+        window.loadLayerByType = loadLayerByType;
+        window.openLayerModal = openLayerModal;
+        window.resetLayerForm = resetLayerForm;
+        window.saveLayer = saveLayer;
+        window.showLayerConfig = showLayerConfig;
+        window.loadRevendasForModal = loadRevendasForModal;
+        window.updateCombinedLegend = updateCombinedLegend; // Ensure this is accessible
+        window.hideAnalyticsSidebar = hideAnalyticsSidebar; // Ensure this is accessible
+        window.getFilteredDataForLayer = getFilteredDataForLayer; // For analytics
+        window.calculateLayerAnalytics = calculateLayerAnalytics; // For analytics
+        window.formatNumber = formatNumber; // For analytics
+        window.createAnalyticsChart = createAnalyticsChart; // For analytics
+        window.exportLayerData = exportLayerData; // For analytics
+        window.downloadCompleteData = downloadCompleteData; // For export modal
+        window.applyStateFilterForLayer = applyStateFilterForLayer; // Helper for filtering GeoJSON
+        window.loadMunicipalityBoundariesForLayer = loadMunicipalityBoundariesForLayer; // For crop layers
+        window.loadMunicipalityBoundariesForGenericLayer = loadMunicipalityBoundariesForGenericLayer; // For other generic layers
+        window.loadMunicipalityBoundariesForFertilizerLayer = loadMunicipalityBoundariesForFertilizerLayer; // Specific for fertilizer styling
+        window.loadMunicipalityBoundariesForRevendasLayer = loadMunicipalityBoundariesForRevendasLayer; // Specific for revendas styling
+        window.getColorForValueWithColor = getColorForValueWithColor; // For coloring logic
+        window.generateSequentialColorWithBase = generateSequentialColorWithBase; // Color generation helper
+        window.setupFeaturePopupForLayer = setupFeaturePopupForLayer; // Popups for crop layers
+        window.setupFeaturePopupForFertilizerLayer = setupFeaturePopupForFertilizerLayer; // Popups for fertilizer layers
+        window.setupFeaturePopupForRevendasLayer = setupFeaturePopupForRevendasLayer; // Popups for revendas layers
+        window.getFeatureStyleForLayer = getFeatureStyleForLayer; // Styling for crop layers
+        window.getFeatureStyleForFertilizerLayer = getFeatureStyleForFertilizerLayer; // Styling for fertilizer layers
+        window.getFeatureStyleForRevendasLayer = getFeatureStyleForRevendasLayer; // Styling for revendas layers
+        window.calculateCardPosition = calculateCardPosition; // For card positioning
+        window.repositionAnalyticsCards = repositionAnalyticsCards; // To reposition cards
+        window.updateAnalyticsCard = updateAnalyticsCard; // To update card content
+        window.removeAnalyticsCard = removeAnalyticsCard; // To remove cards
+        window.clearAllAnalyticsCards = clearAllAnalyticsCards; // To clear all cards
+        window.toggleAnalyticsCard = toggleAnalyticsCard; // To toggle card minimization
+        window.downloadCompleteData = downloadCompleteData; // For export modal
+        window.filterByState = filterByState; // For state filtering
+        window.showAnalyticsSidebar = showAnalyticsSidebar; // To show the analytics sidebar
+    </script>
+</body>
+</html>
